@@ -58,7 +58,7 @@ export default function Chat() {
     };
 
     return (
-        <div className="flex flex-col h-[90vh] w-full max-w-3xl mx-auto border rounded-2xl shadow-lg bg-white dark:bg-gray-800 overflow-hidden">
+        <div className="flex flex-col h-[80vh] w-full border rounded-2xl shadow-lg bg-white dark:bg-gray-800 overflow-hidden">
             <ChatHeader />
 
             {error && <div className="p-4 mb-4 text-red-500 bg-red-100 rounded-lg">{error}</div>}
