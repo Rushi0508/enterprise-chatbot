@@ -1,19 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Send } from "lucide-react";
-
-interface Message {
-    id: string;
-    content: string;
-    role: "user" | "assistant";
-    timestamp: Date;
-}
+import ReactMarkdown from "react-markdown";
+import { Message, ChatResponse, ErrorResponse } from "@/app/types/chat";
 
 export default function Chat() {
+    const [sessionId] = useState(() => Math.random().toString(36).substring(7));
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState("");
     const [isTyping, setIsTyping] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -30,18 +36,33 @@ export default function Chat() {
         setInput("");
         setIsTyping(true);
 
-        // Simulate bot response
-        setTimeout(() => {
-            const botMessage: Message = {
-                id: (Date.now() + 1).toString(),
-                content:
-                    "This is a sample response from the AI assistant. You can replace this with actual API calls later.",
-                role: "assistant",
-                timestamp: new Date(),
-            };
-            setMessages((prev) => [...prev, botMessage]);
+        try {
+            const response = await fetch("/api/chat", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    message: input,
+                    sessionId,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                const errorData = data as ErrorResponse;
+                throw new Error(errorData.error || "Failed to send message");
+            }
+
+            const chatResponse = data as ChatResponse;
+            setMessages(chatResponse.session.messages);
+            setError(null);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "An error occurred");
+        } finally {
             setIsTyping(false);
-        }, 2000);
+        }
     };
 
     return (
@@ -50,6 +71,9 @@ export default function Chat() {
             <div className="p-6 border-b border-gray-200 dark:border-gray-700">
                 <h2 className="text-xl font-outfit font-semibold text-gray-800 dark:text-gray-100">Chat Assistant</h2>
             </div>
+
+            {/* Error message */}
+            {error && <div className="p-4 mb-4 text-red-500 bg-red-100 rounded-lg">{error}</div>}
 
             {/* Messages container */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -65,7 +89,13 @@ export default function Chat() {
                                     : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100"
                             }`}
                         >
-                            {message.content}
+                            {message.role === "user" ? (
+                                <ReactMarkdown className="text-sm">{message.content}</ReactMarkdown>
+                            ) : (
+                                <div className="prose dark:prose-invert prose-sm max-w-none">
+                                    <ReactMarkdown>{message.content}</ReactMarkdown>
+                                </div>
+                            )}
                         </div>
                     </div>
                 ))}
@@ -80,6 +110,7 @@ export default function Chat() {
                         </div>
                     </div>
                 )}
+                <div ref={messagesEndRef} />
             </div>
 
             {/* Input form */}
