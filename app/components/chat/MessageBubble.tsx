@@ -16,7 +16,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                 }`}
             >
                 {isUser ? (
-                    message.content
+                    <ReactMarkdown className={"text-sm"}>{message.content}</ReactMarkdown>
                 ) : (
                     <div className="prose dark:prose-invert prose-sm max-w-none">
                         <ReactMarkdown>{message.content}</ReactMarkdown>
