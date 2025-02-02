@@ -1,6 +1,8 @@
 import { openai } from "@/lib/openai";
 import { ChatSession, Message } from "@/app/types/chat";
 import { AzureOpenAI } from "openai";
+import fs from "fs";
+import path from "path";
 
 export class ChatService {
     private static instance: ChatService;
@@ -8,10 +10,19 @@ export class ChatService {
     private sessions: Map<string, ChatSession>;
     private readonly MAX_RETRIES = 3;
     private readonly MAX_MESSAGES = 5;
+    private readonly SYSTEM_PROMPT: Message = {
+        id: "system",
+        role: "system",
+        content: "", // Will be populated from file
+        timestamp: new Date(),
+    };
 
     private constructor() {
         this.openai = openai;
         this.sessions = new Map<string, ChatSession>();
+        const promptPath = path.join(process.cwd(), "app", "prompts", "worklog-assistant.md");
+        const promptContent = fs.readFileSync(promptPath, "utf-8");
+        this.SYSTEM_PROMPT.content = promptContent;
     }
 
     public static getInstance(): ChatService {
@@ -45,10 +56,13 @@ export class ChatService {
     }
 
     private convertToOpenAIMessages(messages: Message[]) {
-        return messages.map((msg) => ({
-            role: msg.role,
-            content: msg.content,
-        }));
+        return [
+            this.SYSTEM_PROMPT,
+            ...messages.map((msg) => ({
+                role: msg.role,
+                content: msg.content,
+            })),
+        ];
     }
 
     public async generateResponse(session: ChatSession): Promise<Message> {
